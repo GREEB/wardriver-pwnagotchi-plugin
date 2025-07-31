@@ -858,7 +858,7 @@ HTML_PAGE = '''
 
 {% block meta %}
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, user-scalable=0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/jquery.dataTables.min.css" integrity="sha512-1k7mWiTNoyx2XtmI96o+hdjP8nn0f3Z2N4oF/9ZZRgijyV4omsKOXEnqL1gKQNPy2MTSP9rIEWGcH/CInulptA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link
         rel="stylesheet"
@@ -868,59 +868,309 @@ HTML_PAGE = '''
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 
 {% endblock %}
 
 {% block styles %}
 {{ super() }}
     <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+        }
+
+        /* Light theme variables */
+        [data-theme="light"] {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --hover-bg: #f5f5f5;
+            --alert-bg: #fff5a5;
+            --alert-text: #000000;
+        }
+
+        /* Dark theme variables */
+        [data-theme="dark"] {
+            --bg-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --card-bg: #2d2d2d;
+            --border-color: #404040;
+            --hover-bg: #3a3a3a;
+            --alert-bg: #4a4a00;
+            --alert-text: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
         .container {
             margin-top: 10px;
             margin-bottom: 30px;
+            max-width: 100%;
+            padding: 0 15px;
         }
+
+        /* Mobile first responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 10px;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem;
+            }
+            
+            #menu .grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            
+            .overflow-auto {
+                font-size: 0.8rem;
+            }
+            
+            table th, table td {
+                padding: 0.5rem 0.25rem;
+                white-space: nowrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #menu .grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            h3 {
+                font-size: 1.2rem;
+            }
+        }
+
         header i {
             font-size: 20px;
             margin-top: 10px;
             margin-right: 10px;
+            color: var(--primary-color);
         }
+
         .center {
             text-align: center;
         }
+
         #menu {
             margin-top: 30px;
         }
+
         #menu div p {
             cursor: pointer;
+            padding: 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            margin: 0;
         }
+
+        #menu div p:hover {
+            background: var(--hover-bg);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        #menu div p.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
         .visible {
-            display: initial;
+            display: block;
         }
+
         .hidden {
             display: none;
         }
+
         #map_networks {
-            height: 600px;
+            height: 60vh;
+            min-height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
         }
-        #sessions-table i {
+
+        @media (max-width: 768px) {
+            #map_networks {
+                height: 50vh;
+                min-height: 300px;
+            }
+        }
+
+        #sessions-table i, .action-icon {
             cursor: pointer;
             margin-right: 15px;
             font-size: 16px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
         }
+
+        #sessions-table i:hover, .action-icon:hover {
+            background: var(--hover-bg);
+            transform: scale(1.1);
+        }
+
         #manu-alert p {
-            background-color: #fff5a5;
-            padding: 10px 20px!important;
+            background-color: var(--alert-bg);
+            padding: 15px 20px;
             text-align: center;
-            margin: auto!important;
-            border-radius: var(--pico-border-radius);
-            color: #000;
-            width: fit-content!important;
-            margin-bottom: 20px!important;
+            margin: 20px auto;
+            border-radius: 8px;
+            color: var(--alert-text);
+            width: fit-content;
+            max-width: 90%;
+            border-left: 4px solid var(--warning-color);
         }
+
+        article {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        article:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Dark theme specific styles */
+        [data-theme="dark"] .leaflet-popup-content-wrapper {
+            background: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] .leaflet-popup-tip {
+            background: var(--card-bg);
+        }
+
+        [data-theme="dark"] .dataTables_wrapper {
+            color: var(--text-color);
+        }
+
+        [data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button {
+            color: var(--text-color) !important;
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            background: var(--hover-bg) !important;
+        }
+
+        /* Custom cluster styles for better visibility */
+        .marker-cluster-small {
+            background-color: rgba(181, 226, 140, 0.6);
+        }
+        .marker-cluster-small div {
+            background-color: rgba(110, 204, 57, 0.6);
+        }
+
+        .marker-cluster-medium {
+            background-color: rgba(241, 211, 87, 0.6);
+        }
+        .marker-cluster-medium div {
+            background-color: rgba(240, 194, 12, 0.6);
+        }
+
+        .marker-cluster-large {
+            background-color: rgba(253, 156, 115, 0.6);
+        }
+        .marker-cluster-large div {
+            background-color: rgba(241, 128, 23, 0.6);
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border-color);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive tables */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-success { background-color: var(--success-color); }
+        .status-warning { background-color: var(--warning-color); }
+        .status-danger { background-color: var(--danger-color); }
+        .status-info { background-color: var(--info-color); }
     </style>
 {% endblock %}
 
 {% block content %}
-   <div class="container" data-theme="light">
+   <div class="container" data-theme="light" id="main-container">
+        <!-- Theme Toggle Button -->
+        <button class="theme-toggle" id="theme-toggle" title="Toggle Dark/Light Theme">
+            <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
+
         <header>
             <hgroup class="center">
                 <h1>Wardriver plugin</h1>
@@ -1000,7 +1250,7 @@ HTML_PAGE = '''
                         </div>
                     </div>
                     <h4>Last APs refresh networks</h4>
-                    <div class="overflow-auto">
+                    <div class="table-responsive">
                         <table>
                             <thead>
                                 <th scope="col">SSID</th>
@@ -1058,7 +1308,10 @@ HTML_PAGE = '''
                             <h3>Current plugin config</h3>
                             <article>
                                 <ul>
-                                    <li><b>WiGLE automatic upload</b>: <span id="config-wigle">-</span></li>
+                                    <li><b>WiGLE automatic upload</b>: 
+                                        <span class="status-indicator" id="config-wigle-indicator"></span>
+                                        <span id="config-wigle">-</span>
+                                    </li>
                                     <li><b>UI enabled</b>: <span id="config-ui">-</span></li>
                                     <li><b>Database file path</b>: <span id="config-db">-</span></li>
                                     <li><b>GPS</b>:<ul id="config-gps"></ul></li>
@@ -1075,7 +1328,7 @@ HTML_PAGE = '''
                     <i class="fa-solid fa-cloud-arrow-up"></i> : upload session to WiGLE<br />
                     <!--<i class="fa-solid fa-trash"></i> : delete the session (<b>not the networks</b>)-->
                     </p>
-                    <div class="overflow-auto">
+                    <div class="table-responsive">
                         <table>
                             <thead>
                                 <th scope="col">ID</th>
@@ -1092,7 +1345,7 @@ HTML_PAGE = '''
                 </div>
                 <div id="networks">
                     <h3>Networks</h3>
-                    <div class="overflow-auto">
+                    <div class="table-responsive">
                         <table id="networks-table-container">
                             <thead>
                                 <th scope="col">ID</th>
@@ -1112,7 +1365,11 @@ HTML_PAGE = '''
                 </div>
                 <div id="map">
                     <h3>Networks map</h3>
-                    <p class="center"><i><i class="fa-solid fa-lightbulb"></i> Tip: click on a point to see the networks discovered there</i></p>
+                    <p class="center"><i><i class="fa-solid fa-lightbulb"></i> Tip: click on a cluster or marker to see the networks discovered there</i></p>
+                    <div id="map-loading" class="center" style="padding: 20px;">
+                        <div class="loading-spinner"></div>
+                        <p>Loading map data...</p>
+                    </div>
                     <div id="map_networks"></div>
                 </div>
             </div>
@@ -1123,44 +1380,95 @@ HTML_PAGE = '''
     </div>
 {% endblock %}
 {% block script %}
-    </script>
-    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js" integrity="sha512-BkpSL20WETFylMrcirBahHfSnY++H2O1W+UnEEO4yNIl+jI2+zowyoGJpbtk6bx97fBXf++WJHSSK2MV4ghPcg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
         crossorigin=""></script>
-    <script src="https://unpkg.com/leaflet-canvas-marker@0.2.0"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster-src.js"></script>
     <script>
     (function() {
         container = document.getElementById("data-container")
         setupMenuClickListeners()
+        setupThemeToggle()
         showCurrentSession()
         var map
+        var markersLayer
+
+        // Theme management
+        function setupThemeToggle() {
+            const themeToggle = document.getElementById('theme-toggle')
+            const themeIcon = document.getElementById('theme-icon')
+            const mainContainer = document.getElementById('main-container')
+            
+            // Load saved theme or default to light
+            const savedTheme = localStorage.getItem('wardriver-theme') || 'light'
+            setTheme(savedTheme)
+            
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = mainContainer.getAttribute('data-theme')
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light'
+                setTheme(newTheme)
+                localStorage.setItem('wardriver-theme', newTheme)
+            })
+            
+            function setTheme(theme) {
+                mainContainer.setAttribute('data-theme', theme)
+                themeIcon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'
+                
+                // Update map tiles if map exists
+                if (map && map.hasLayer) {
+                    updateMapTheme(theme)
+                }
+            }
+        }
+
+        function updateMapTheme(theme) {
+            if (!map) return
+            
+            // Remove existing tile layer
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer)
+                }
+            })
+            
+            // Add appropriate tile layer based on theme
+            const tileUrl = theme === 'dark' 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+            
+            const attribution = theme === 'dark'
+                ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                : '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            
+            L.tileLayer(tileUrl, {
+                maxZoom: 19,
+                attribution: attribution
+            }).addTo(map)
+        }
 
         function downloadCSV(session_id) {
             request("GET", "/plugins/wardriver/csv/" + session_id, function(text) {
                 const blob = new Blob([text], { type: 'text/csv' })
-
-                // Creating an object for downloading url 
                 const url = window.URL.createObjectURL(blob) 
-
-                // Creating an anchor(a) tag of HTML 
                 const a = document.createElement('a')
-
-                // Passing the blob downloading url  
                 a.setAttribute('href', url) 
-
-                // Setting the anchor tag attribute for downloading 
-                // and passing the download file name 
-                a.setAttribute('download', 'session.csv')
-
-                // Performing a download with click 
+                a.setAttribute('download', `wardriver-session-${session_id}.csv`)
                 a.click()
+                window.URL.revokeObjectURL(url)
             })
         }
 
         function uploadSessionsToWigle(session_id) {
+            const button = event.target
+            const originalHtml = button.innerHTML
+            button.innerHTML = '<i class="loading-spinner"></i>'
+            button.disabled = true
+            
             request('GET', '/plugins/wardriver/upload/' + session_id, function(message) {
+                button.innerHTML = originalHtml
+                button.disabled = false
                 showSessions()
                 alert(message.status)
             })
@@ -1177,9 +1485,9 @@ HTML_PAGE = '''
                     return
                 }
 
-                document.getElementById("current-session-gps-latitude").innerHTML = data.gps.latitude
-                document.getElementById("current-session-gps-longitude").innerHTML = data.gps.longitude
-                document.getElementById("current-session-gps-altitude").innerHTML = data.gps.altitude
+                document.getElementById("current-session-gps-latitude").innerHTML = data.gps.latitude || '-'
+                document.getElementById("current-session-gps-longitude").innerHTML = data.gps.longitude || '-'
+                document.getElementById("current-session-gps-altitude").innerHTML = data.gps.altitude || '-'
 
                 document.getElementById("manu-alert").className = 'hidden'
                 document.getElementById("current-session-id").innerHTML = data.id
@@ -1194,51 +1502,67 @@ HTML_PAGE = '''
                     tableRow.innerHTML = "<td colspan='5' class='center'>No networks.</td>"
                     apTable.appendChild(tableRow)
                 }
-                else
+                else {
                     for(var network of data.last_ap_reported) {
                         var tableRow = document.createElement('tr')
-                        var macCol = document.createElement('td')
                         var ssidCol = document.createElement('td')
+                        var macCol = document.createElement('td')
                         var channelCol = document.createElement('td')
                         var rssiCol = document.createElement('td')
                         var capabilitiesCol = document.createElement('td')
+                        
+                        ssidCol.innerText = network.ssid || 'Hidden'
                         macCol.innerText = network.mac
-                        ssidCol.innerText = network.ssid
                         channelCol.innerText = network.channel
-                        rssiCol.innerText = network.rssi
+                        rssiCol.innerText = network.rssi + ' dBm'
                         capabilitiesCol.innerText = network.capabilities
-                        tableRow.appendChild(macCol)
+                        
+                        // Add RSSI color coding
+                        const rssiValue = parseInt(network.rssi)
+                        if (rssiValue > -50) rssiCol.style.color = 'var(--success-color)'
+                        else if (rssiValue > -70) rssiCol.style.color = 'var(--warning-color)'
+                        else rssiCol.style.color = 'var(--danger-color)'
+                        
                         tableRow.appendChild(ssidCol)
+                        tableRow.appendChild(macCol)
                         tableRow.appendChild(channelCol)
                         tableRow.appendChild(rssiCol)
                         tableRow.appendChild(capabilitiesCol)
                         apTable.appendChild(tableRow)
                     }
-                jQuery("time.timeago").timeago();
+                }
+                if (typeof jQuery !== 'undefined' && jQuery("time.timeago").length) {
+                    jQuery("time.timeago").timeago();
+                }
             })
         }
 
         setInterval(getCurrentSessionStats, 30 * 1000) // refresh current session data every 30s
         
         // Make HTTP request to pwnagotchi "server"
-        function request(method, url, callback) {
+        function request(method, url, callback, errorCallback) {
             var xobj = new XMLHttpRequest();
             xobj.overrideMimeType("application/json")
             xobj.open(method, url, true);
             xobj.onreadystatechange = function () {
-                if (xobj.readyState == 4 && xobj.status == "200") {
-                    var response = xobj.responseText
-                    try {
-                        response = JSON.parse(xobj.responseText)
+                if (xobj.readyState == 4) {
+                    if (xobj.status == "200") {
+                        var response = xobj.responseText
+                        try {
+                            response = JSON.parse(xobj.responseText)
+                        }
+                        catch(error) {
+                            // Response is not JSON, keep as text
+                        }
+                        callback(response)
+                    } else if (errorCallback) {
+                        errorCallback(xobj.status, xobj.statusText)
                     }
-                    catch(error) {
-                        
-                    }
-                    callback(response)
                 }
             }
             xobj.send(null);
         }
+
         function loadWigleStats(api_key, callback) {
             var xobj = new XMLHttpRequest();
             xobj.overrideMimeType("application/json")
@@ -1251,11 +1575,13 @@ HTML_PAGE = '''
             }
             xobj.send(null);
         }
+
         function parseUTCDate(date) {
             var utcDateStr = date.replace(" ", "T")
             utcDateStr += ".000Z"
             return new Date(utcDateStr)
         }
+
         function updateContainerView(showing) {
             var views = [
                 "current-session",
@@ -1265,24 +1591,43 @@ HTML_PAGE = '''
                 "map"
             ]
 
-            $("#networks-table-container").DataTable().destroy();
+            // Remove active class from all menu items
+            document.querySelectorAll('#menu p').forEach(function(item) {
+                item.classList.remove('active')
+            })
+
+            // Add active class to current menu item
+            document.getElementById('menu-' + showing).classList.add('active')
+
+            // Destroy DataTable if it exists
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable('#networks-table-container')) {
+                $("#networks-table-container").DataTable().destroy();
+            }
 
             for(var view of views)
                 document.getElementById(view).className = view == showing ? "visible" : "hidden"
         }
+
         function showCurrentSession() {
             updateContainerView("current-session")
             getCurrentSessionStats()
         }
+
         function showStats() {
             updateContainerView("stats")
             request('GET', "/plugins/wardriver/general-stats", function(data) {
                 document.getElementById("total-networks").innerText = data.total_networks
                 document.getElementById("total-sessions").innerText = data.total_sessions
                 document.getElementById("sessions-uploaded").innerText = data.sessions_uploaded
-                document.getElementById("config-wigle").innerText = data.config.wigle_enabled ? "enabled" : "disabled"
+                
+                // Update config with status indicators
+                const wigleEnabled = data.config.wigle_enabled
+                document.getElementById("config-wigle").innerText = wigleEnabled ? "enabled" : "disabled"
+                document.getElementById("config-wigle-indicator").className = `status-indicator ${wigleEnabled ? 'status-success' : 'status-danger'}`
+                
                 document.getElementById("config-ui").innerText = data.config.ui_enabled
                 document.getElementById("config-db").innerText = data.config.db_path
+                
                 document.getElementById("config-whitelist").innerHTML = ""
                 if(data.config.whitelist.length == 0)
                     document.getElementById("config-whitelist").innerHTML = "none"
@@ -1315,11 +1660,12 @@ HTML_PAGE = '''
                         document.getElementById("wigle-discovered-wifi").innerText = stats.statistics.discoveredWiFiGPS
                         document.getElementById("wigle-current-month-wifi").innerText = stats.statistics.eventMonthCount
                         document.getElementById("wigle-previous-month-wifi").innerText = stats.statistics.eventPrevMonthCount
-                        document.getElementById("wigle-badge").innerHTML = "<img src='https://wigle.net" + stats.imageBadgeUrl +"' alt='wigle-profile-badge' />"
+                        document.getElementById("wigle-badge").innerHTML = "<img src='https://wigle.net" + stats.imageBadgeUrl +"' alt='wigle-profile-badge' style='max-width: 100%; height: auto;' />"
                     })
                 }
             })
         }
+
         function showSessions() {
             updateContainerView("sessions")
             request('GET', "/plugins/wardriver/sessions", function(data) {
@@ -1334,22 +1680,25 @@ HTML_PAGE = '''
                     var actionsCol = document.createElement("td")
 
                     idCol.innerHTML = session.id
-                    createdCol.innerHTML = session.created_at
+                    createdCol.innerHTML = new Date(session.created_at).toLocaleDateString() + ' ' + new Date(session.created_at).toLocaleTimeString()
                     networksCol.innerHTML = session.networks
-                    wigleCol.innerHTML = "<i class='fa-regular " + (session.wigle_uploaded ? "fa-square-check" : "fa-square") + "'></i>"
+                    wigleCol.innerHTML = "<span class='status-indicator " + (session.wigle_uploaded ? "status-success" : "status-warning") + "'></span><i class='fa-regular " + (session.wigle_uploaded ? "fa-square-check" : "fa-square") + "'></i>"
+                    
                     csvIcon = document.createElement('i')
-                    csvIcon.className = 'fa-solid fa-file-csv'
+                    csvIcon.className = 'fa-solid fa-file-csv action-icon'
+                    csvIcon.title = 'Download CSV'
                     csvIcon.addEventListener("click", function(session_id) { return function() { downloadCSV(session_id)} } (session.id))
-                    wigleIcon = document.createElement('i')
-                    wigleIcon.className = 'fa-solid fa-cloud-arrow-up'
-                    deleteIcon = document.createElement('i')
-                    deleteIcon.className = 'fa-solid fa-trash'
+                    
                     actionsCol.appendChild(csvIcon)
+                    
                     if(!session.wigle_uploaded) {
+                        wigleIcon = document.createElement('i')
+                        wigleIcon.className = 'fa-solid fa-cloud-arrow-up action-icon'
+                        wigleIcon.title = 'Upload to WiGLE'
                         wigleIcon.addEventListener("click", function(session_id) { return function() { uploadSessionsToWigle(session_id)} } (session.id))
                         actionsCol.appendChild(wigleIcon)
                     }
-                    //actionsCol.appendChild(deleteIcon)
+                    
                     tableRow.appendChild(idCol)
                     tableRow.appendChild(createdCol)
                     tableRow.appendChild(networksCol)
@@ -1359,32 +1708,48 @@ HTML_PAGE = '''
                 }
             })
         }
+
         function showNetworks() {
             updateContainerView("networks")
             request('GET', "/plugins/wardriver/networks", function(data) {
                 $('#networks-table-container').DataTable({
                     data: data,
-                    searching: false,
-                    lengthChange: false,
+                    searching: true,
+                    lengthChange: true,
                     pageLength: 25,
+                    responsive: true,
                     columns: [
                         { data: "id", width: "5%" },
                         { data: "mac", width: "15%" },
-                        { data: "ssid", width: "20%" },
-                        { data: "first_seen", width: "15%" },
+                        { data: "ssid", width: "20%", render: function(data) {
+                            return data || '<em>Hidden</em>'
+                        }},
+                        { data: "first_seen", width: "15%", render: function(data) {
+                            return new Date(data).toLocaleDateString()
+                        }},
                         { data: "first_session", width: "10%" },
-                        { data: "last_seen", width: "15%" },
+                        { data: "last_seen", width: "15%", render: function(data) {
+                            return new Date(data).toLocaleDateString()
+                        }},
                         { data: "last_session", width: "10%" },
                         { data: "sessions_count", width: "10%" }
                     ]
                 })
             })
         }
+
         function showMap() {
             updateContainerView("map")
+            document.getElementById("map-loading").style.display = 'block'
+            document.getElementById("map_networks").style.display = 'none'
+            
             request('GET', '/plugins/wardriver/map-networks', function(response) {
                 var networks = response.networks
                 var center = response.center
+                
+                document.getElementById("map-loading").style.display = 'none'
+                document.getElementById("map_networks").style.display = 'block'
+                
                 if(center[0] == "-" || center[1] == "-") {
                     if(navigator.geolocation) {
                         navigator.geolocation.getCurrentPosition(function(position) {
@@ -1406,57 +1771,139 @@ HTML_PAGE = '''
                 else {
                     renderMap(networks, center)
                 }
+            }, function(status, statusText) {
+                document.getElementById("map-loading").innerHTML = '<p style="color: var(--danger-color);">Error loading map data: ' + statusText + '</p>'
             })
         }
+
         function renderMap(networks, center) {
-            if(map)
+            // Remove existing map if it exists
+            if(map) {
                 map.remove()
-            map = L.map("map_networks", { center: center, zoom: 13, zoomControl: false})
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }).addTo(map)
-            var ciLayer = L.canvasIconLayer({}).addTo(map)
-            var icon = L.icon({
-                iconUrl: 'https://img.icons8.com/metro/26/000000/marker.png',
-                iconSize: [20, 18],
-                iconAnchor: [10, 9]
+            }
+            
+            // Initialize map
+            map = L.map("map_networks", { 
+                center: center, 
+                zoom: 13, 
+                zoomControl: true,
+                preferCanvas: true
+            })
+            
+            // Get current theme and add appropriate tile layer
+            const currentTheme = document.getElementById('main-container').getAttribute('data-theme')
+            updateMapTheme(currentTheme)
+            
+            // Create marker cluster group with custom options
+            markersLayer = L.markerClusterGroup({
+                chunkedLoading: true,
+                chunkProgress: function(processed, total, elapsed) {
+                    // Optional: show progress
+                },
+                maxClusterRadius: 50,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true
             })
 
-            var networksGrouped = networks.reduce(function (n, network) {
-                var key = network.latitude + "," + network.longitude
-                n[key] = n[key] || []
-                n[key].push(network)
-                return n
+            // Custom icon for network markers
+            var networkIcon = L.divIcon({
+                className: 'network-marker',
+                html: '<i class="fas fa-wifi" style="color: #007bff; font-size: 16px;"></i>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+                popupAnchor: [0, -10]
+            })
+
+            // Group networks by location to avoid overlapping markers
+            var networksGrouped = networks.reduce(function (grouped, network) {
+                // Round coordinates to avoid micro-differences
+                var lat = parseFloat(network.latitude).toFixed(6)
+                var lng = parseFloat(network.longitude).toFixed(6)
+                var key = lat + "," + lng
+                grouped[key] = grouped[key] || []
+                grouped[key].push(network)
+                return grouped
             }, Object.create(null))
             
             var markers = []
-            var mapCenter
+            var bounds = L.latLngBounds()
+            
             Object.keys(networksGrouped).forEach(key => {
-                var networks = networksGrouped[key]
+                var networksAtLocation = networksGrouped[key]
                 var coordinates = key.split(",")
-                if(!mapCenter)
-                    mapCenter = coordinates
-                var popupText = ""
-                var popupCounter = 0
-                while(popupCounter < Math.min(networks.length, 7)) {
-                    var network = networks[popupCounter]
-                    if(network.ssid == "")
-                        popupText += "<b>Hidden</b>"
-                    else
-                        popupText += "<b>" + network.ssid + "</b>"
+                var lat = parseFloat(coordinates[0])
+                var lng = parseFloat(coordinates[1])
+                
+                if (isNaN(lat) || isNaN(lng)) return
+                
+                bounds.extend([lat, lng])
+                
+                // Create popup content
+                var popupContent = "<div style='max-height: 200px; overflow-y: auto;'>"
+                popupContent += "<h4>Networks at this location (" + networksAtLocation.length + ")</h4>"
+                
+                var displayCount = Math.min(networksAtLocation.length, 10)
+                for (var i = 0; i < displayCount; i++) {
+                    var network = networksAtLocation[i]
+                    var ssid = network.ssid || '<em>Hidden Network</em>'
+                    var security = network.capabilities ? 
+                        (network.capabilities.includes('WPA') ? '<span style="color: orange;">🔒 WPA</span>' : 
+                         network.capabilities.includes('WEP') ? '<span style="color: red;">🔒 WEP</span>' : 
+                         '<span style="color: green;">🔓 Open</span>') : 
+                        '<span style="color: gray;">Unknown</span>'
                     
-                    popupText += " (" + network.mac + ")<br />"
-                    popupCounter++
+                    popupContent += "<div style='border-bottom: 1px solid #eee; padding: 5px 0;'>"
+                    popupContent += "<strong>" + ssid + "</strong><br/>"
+                    popupContent += "<small>MAC: " + network.mac + "</small><br/>"
+                    popupContent += "<small>Security: " + security + "</small>"
+                    if (network.channel) {
+                        popupContent += "<small> | Channel: " + network.channel + "</small>"
+                    }
+                    popupContent += "</div>"
                 }
-                if(networks.length > popupCounter)
-                    popupText += '&plus;' + (networks.length - popupCounter) + ' more networks'
-                var marker = L.marker([coordinates[0], coordinates[1]], {icon: icon}).bindPopup(popupText)
+                
+                if (networksAtLocation.length > displayCount) {
+                    popupContent += "<p><em>+" + (networksAtLocation.length - displayCount) + " more networks...</em></p>"
+                }
+                popupContent += "</div>"
+                
+                // Create marker
+                var marker = L.marker([lat, lng], {icon: networkIcon})
+                    .bindPopup(popupContent, {
+                        maxWidth: 300,
+                        className: 'network-popup'
+                    })
+                
                 markers.push(marker)
             })
 
-            ciLayer.addLayers(markers)
+            // Add markers to cluster group
+            markersLayer.addLayers(markers)
+            map.addLayer(markersLayer)
+            
+            // Fit map to bounds if we have markers
+            if (markers.length > 0) {
+                map.fitBounds(bounds, {padding: [10, 10]})
+            }
+            
+            // Add scale and attribution controls
+            L.control.scale().addTo(map)
+            
+            // Add custom control for network count
+            var networkCountControl = L.control({position: 'topright'})
+            networkCountControl.onAdd = function(map) {
+                var div = L.DomUtil.create('div', 'network-count-control')
+                div.style.background = 'var(--card-bg)'
+                div.style.padding = '5px 10px'
+                div.style.borderRadius = '4px'
+                div.style.border = '1px solid var(--border-color)'
+                div.innerHTML = '<strong>' + networks.length + '</strong> networks'
+                return div
+            }
+            networkCountControl.addTo(map)
         }
+
         function setupMenuClickListeners() {
             document.getElementById("menu-current-session").addEventListener("click", showCurrentSession)
             document.getElementById("menu-stats").addEventListener("click", showStats)
@@ -1464,6 +1911,10 @@ HTML_PAGE = '''
             document.getElementById("menu-networks").addEventListener("click", showNetworks)
             document.getElementById("menu-map").addEventListener("click", showMap)
         }
+
+        // Initialize with current session view
+        updateContainerView("current-session")
     })()
+    </script>
 {% endblock %}
 '''
