@@ -1173,7 +1173,7 @@ HTML_PAGE = '''
 
         <header>
             <hgroup class="center">
-                <h1>Wardriver plugin</h1>
+                <h1>Wardriver plugin gfork</h1>
                 <p>v{{ plugin_version }} by <a href="https://github.com/cyberartemio/" target="_blank">cyberartemio</a></p>
                 <a href="https://discord.gg/5vrJbbW3ve" target="_blank"><i class="fa-brands fa-discord"></i></a>
                 <a href="https://github.com/cyberartemio/wardriver-pwnagotchi-plugin" target="_blank"><i class="fa-brands fa-github"></i></a>
